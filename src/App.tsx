@@ -51,8 +51,8 @@ function shuffleArray<T>(array: T[]): T[] {
 const questionList: Status[] = [
   Status.SAME,
   Status.SAME,
-  Status.DISTINGUISHED,
-  Status.DISTINGUISHED,
+  Status.DIFFERENT,
+  Status.DIFFERENT,
   Status.DISTINGUISHED,
   Status.DISTINGUISHED,
 ];
@@ -140,14 +140,15 @@ const Results = ({ answers }: { answers: Result[] }) => {
 export default function ColorCaptchaApp() {
   const [answers, setAnswers] = useState<Result[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [quizData, setQuizData] = useState<QuizItem[]>(() => generateQuiz());
+  const [quizData, setQuizData] = useState<QuizItem[]>(generateQuiz());
 
   // 回答事件
   const handleAnswer = (result: Result) => {
     setAnswers((prev) => [...prev, result]);
+    // setCurrentIndex((prev) => prev + 1);
     setTimeout(() => {
       setCurrentIndex((prev) => prev + 1);
-    }, 1000); // 延遲1秒以顯示 Correct/Wrong
+    }, 500);
   };
 
   // 重新開始
@@ -162,6 +163,7 @@ export default function ColorCaptchaApp() {
       {currentIndex < quizData.length ? (
         <>
           <h2>{`Color CAPTCHA ${currentIndex + 1}/${quizData.length}`}</h2>
+          <h4>Are area A and B the same color?</h4>
           <OpticalIllusionCaptcha
             key={currentIndex}
             onAnswer={handleAnswer}

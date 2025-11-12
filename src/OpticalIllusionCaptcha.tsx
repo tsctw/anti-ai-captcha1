@@ -35,10 +35,10 @@ export const OpticalIllusionCaptcha = ({
     <div className="captcha-card">
       <div className="cube-scene small">
         <div className="cube top" style={{ background: colors.color1 }}>
-          A
+          <span style={{ color: '#000' }}>A</span>
         </div>
         <div className="cube bottom" style={{ background: colors.color2 }}>
-          B
+          <span style={{ color: '#fff' }}>B</span>
         </div>
       </div>
     </div>
@@ -47,7 +47,7 @@ export const OpticalIllusionCaptcha = ({
         <button onClick={() => handleChoice("different")}>Different</button>
       </div>
     {answered && (
-        <p>{correct ? "✅ Correct!" : "❌ Wrong!"}</p>
+        <div style={{marginTop: '20px'}} >{correct ? "✅ You are Correct!" : "❌ You are Wrong!"}</div>
       )}
     </>
   );
