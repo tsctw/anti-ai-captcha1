@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { OpticalIllusionCaptcha } from "./OpticalIllusionCaptcha";
 
+// 狀態列舉
 export enum Status {
   SAME = "same",
   DIFFERENT = "different",
   DISTINGUISHED = "distinguished",
 }
 
+// 回傳結果類型
 export type Result = {
   correct: boolean;
   color1: string;
@@ -14,6 +16,7 @@ export type Result = {
   status: Status;
 };
 
+// 🔹 隨機產生灰階顏色
 const randomColor = () => {
   const steps = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e"];
   const rand =
@@ -22,7 +25,8 @@ const randomColor = () => {
   return `#${rand}${rand}${rand}`;
 };
 
-function shiftHexColor(hex: string, offset = 7) {
+// 🔹 產生明暗對比色（位移 7）
+const shiftHexColor = (hex: string, offset = 7) => {
   const steps = ["0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f"];
   hex = hex.replace("#", "").toLowerCase();
   let shifted = "";
@@ -31,8 +35,9 @@ function shiftHexColor(hex: string, offset = 7) {
     shifted += steps[(idx + offset) % steps.length];
   }
   return "#" + shifted;
-}
+};
 
+// 🔹 隨機洗牌
 function shuffleArray<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -42,61 +47,54 @@ function shuffleArray<T>(array: T[]): T[] {
   return arr;
 }
 
+// 題目類型列表
 const questionList: Status[] = [
   Status.SAME,
   Status.SAME,
-  Status.DIFFERENT,
-  Status.DIFFERENT,
+  Status.DISTINGUISHED,
+  Status.DISTINGUISHED,
+  Status.DISTINGUISHED,
   Status.DISTINGUISHED,
 ];
 
-type HandleAnswer = (result: Result) => void;
-
-type ListCaptchasProps = {
-  currentIndex: number;
-  handleAnswer: HandleAnswer;
-  shuffledList: Status[];
+// 題目與顏色的組合
+type QuizItem = {
+  status: Status;
+  colors: { color1: string; color2: string };
 };
 
-const ListCaptchas: React.FC<ListCaptchasProps> = ({
-  currentIndex,
-  handleAnswer,
-  shuffledList,
-}) => {
-  const value = shuffledList[currentIndex];
-  const colors = { color1: "", color2: "" };
-
-  if (value === Status.SAME) {
-    colors.color1 = randomColor();
-    colors.color2 = colors.color1;
-  } else if (value === Status.DIFFERENT) {
-    colors.color1 = randomColor();
-    colors.color2 = randomColor();
-  } else {
-    colors.color1 = randomColor();
-    colors.color2 = shiftHexColor(colors.color1);
-  }
-
-  return (
-    <OpticalIllusionCaptcha
-      key={currentIndex}
-      onAnswer={handleAnswer}
-      status={value}
-      colors={colors}
-    />
-  );
+// 🔹 一次生成所有題目與顏色（避免閃爍）
+const generateQuiz = (): QuizItem[] => {
+  const shuffled = shuffleArray(questionList);
+  return shuffled.map((status) => {
+    const colors = { color1: "", color2: "" };
+    if (status === Status.SAME) {
+      colors.color1 = randomColor();
+      colors.color2 = colors.color1;
+    } else if (status === Status.DIFFERENT) {
+      colors.color1 = randomColor();
+      do {
+        colors.color2 = randomColor();
+      } while (colors.color1 === colors.color2);
+    } else {
+      colors.color1 = randomColor();
+      colors.color2 = shiftHexColor(colors.color1);
+    }
+    return { status, colors };
+  });
 };
 
-function IsHuman({ answers }: { answers: Result[] }) {
+// 🔹 判定是否為人類
+const IsHuman = ({ answers }: { answers: Result[] }) => {
   let score = 0;
   let scoreHuman = 0;
   answers.forEach((ans) => {
     if (ans.status === Status.DISTINGUISHED && !ans.correct) scoreHuman -= 1;
-    else if (ans.status === Status.SAME && !ans.correct) scoreHuman += 1;
+    else if (ans.status === Status.SAME && ans.correct) scoreHuman -= 1;
     else if (ans.correct) score += 1;
   });
 
-  if (scoreHuman < 0)
+  if (scoreHuman < -1)
     return (
       <>
         <div>You seem to be an AI (BOT).</div>
@@ -116,9 +114,10 @@ function IsHuman({ answers }: { answers: Result[] }) {
       <div>But Captcha test failed.</div>
     </>
   );
-}
+};
 
-function Results({ answers }: { answers: Result[] }) {
+// 🔹 顯示最終結果
+const Results = ({ answers }: { answers: Result[] }) => {
   const correctCount = answers.filter((a) => a.correct).length;
   return (
     <div>
@@ -132,34 +131,63 @@ function Results({ answers }: { answers: Result[] }) {
           </li>
         ))}
       </ul>
-      <IsHuman answers={answers}/>
+      <IsHuman answers={answers} />
     </div>
   );
-}
+};
 
-export default function App() {
+// 🔹 主組件
+export default function ColorCaptchaApp() {
   const [answers, setAnswers] = useState<Result[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [shuffledList] = useState(() => shuffleArray(questionList));
+  const [quizData, setQuizData] = useState<QuizItem[]>(() => generateQuiz());
 
-  const handleAnswer: HandleAnswer = (result) => {
+  // 回答事件
+  const handleAnswer = (result: Result) => {
     setAnswers((prev) => [...prev, result]);
-    setCurrentIndex((prev) => prev + 1);
+    setTimeout(() => {
+      setCurrentIndex((prev) => prev + 1);
+    }, 1000); // 延遲1秒以顯示 Correct/Wrong
+  };
+
+  // 重新開始
+  const restart = () => {
+    setAnswers([]);
+    setCurrentIndex(0);
+    setQuizData(generateQuiz());
   };
 
   return (
     <div style={{ textAlign: "center" }}>
-      {currentIndex < shuffledList.length ? (
+      {currentIndex < quizData.length ? (
         <>
-          <h2>{`Color CAPTCHA ${currentIndex + 1}/${shuffledList.length}`}</h2>
-          <ListCaptchas
-            currentIndex={currentIndex}
-            handleAnswer={handleAnswer}
-            shuffledList={shuffledList}
+          <h2>{`Color CAPTCHA ${currentIndex + 1}/${quizData.length}`}</h2>
+          <OpticalIllusionCaptcha
+            key={currentIndex}
+            onAnswer={handleAnswer}
+            status={quizData[currentIndex].status}
+            colors={quizData[currentIndex].colors}
           />
         </>
       ) : (
-        <Results answers={answers} />
+        <>
+          <Results answers={answers} />
+          <button
+            onClick={restart}
+            style={{
+              marginTop: "20px",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "#4caf50",
+              color: "white",
+              fontWeight: "600",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Restart
+          </button>
+        </>
       )}
     </div>
   );
